@@ -1,12 +1,17 @@
 package com.cst438.controllers;
 
+import java.sql.Date;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -154,6 +159,90 @@ public class GradeBookController {
 			assignmentGradeRepository.save(ag);
 		}
 		
+	}
+	
+	//delete base of Id
+	@DeleteMapping("/assignment/delete/{id}")
+	@Transactional
+	public void deleteAssignment ( @PathVariable("id") Integer assignmentId ) {
+		
+		//catch error
+		
+		//get assignment from the repository
+		Assignment assignment = assignmentRepository.findById(assignmentId).orElse(null);
+
+		if (assignment == null) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Invalid assignment id. "+assignmentId);
+		}
+		
+		//if assignment doesn't need grading throw error
+		if (assignment.getNeedsGrading()==0) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Invalid assignment id. "+assignmentId);
+		}
+
+		// try to delete
+		assignmentRepository.deleteById(assignmentId);
+	}
+		
+	
+	//create new assignment
+	// assignment name, course id, date
+	@PostMapping("/assignment/new/{name}/{course_id}/{yyyy-mm-dd}")
+	@Transactional
+	public void newAssignment (@PathVariable("name") String name , @PathVariable("course_id") Integer courseID, @PathVariable("yyyy-mm-dd") String dateString ) throws ParseException {
+		
+		String email = "dwisneski@csumb.edu";  // user name (should be instructor's email) 
+		
+		//create new assignment
+		Assignment assignmentNew = new Assignment();
+		
+		//get course or null
+		Course aCourse = courseRepository.findById(courseID).orElse(null);
+		
+		//if null throw an error
+		if (aCourse == null) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Invalid course number. "+courseID);
+		}
+		
+		assignmentNew.setName(name);
+		
+		//convert date
+		Date date=Date.valueOf(dateString);
+		
+		//set date
+		assignmentNew.setDueDate(date);
+		
+		//set Course
+	    assignmentNew.setCourse(aCourse);
+		
+		//update repository
+		assignmentNew = assignmentRepository.save(assignmentNew);
+
+		}
+	//put updating that exist, post creating something new
+	
+	//switch dashes to underscores if errors
+	
+	//change the name for a course
+	@PutMapping("/assignment/rename/{id}/{rename}")
+	@Transactional
+	public void renameAssignment (@PathVariable("id") Integer assignmentId, @PathVariable("rename") String rename ) {
+				
+		String email = "dwisneski@csumb.edu";  // user name (should be instructor's email) 
+		checkAssignment(assignmentId, email);  // check that user name matches instructor email of the course.
+		
+		//get assignment from the repository
+		Assignment assignment = assignmentRepository.findById(assignmentId).orElse(null);
+
+		if (assignment == null) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Invalid assignment id. "+assignmentId);
+		}
+		
+		//set the name
+		assignment.setName(rename);
+		
+		//save the assignment
+        assignmentRepository.save(assignment);
 	}
 	
 	private Assignment checkAssignment(int assignmentId, String email) {
